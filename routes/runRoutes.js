@@ -41,13 +41,36 @@ router.post("/create", async (req, res) => {
   }
 });
 
-// GET session by ID (auto-update status)
+// GET ALL sessions (homepage feed)  ✅ MUST BE BEFORE :sessionId
+router.get("/", async (req, res) => {
+  try {
+    const sessions = await RunSession.find().sort({ startTime: 1 });
+
+    for (const session of sessions) {
+      const newStatus = calculateStatus(session);
+      if (session.status !== newStatus) {
+        session.status = newStatus;
+        await session.save();
+      }
+    }
+
+    res.json(sessions);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
+// GET session by ID
 router.get("/:sessionId", async (req, res) => {
   try {
     const session = await RunSession.findOne({
       sessionId: req.params.sessionId,
     });
-    if (!session) return res.status(404).json({ message: "Session not found" });
+
+    if (!session) {
+      return res.status(404).json({ message: "Session not found" });
+    }
 
     const newStatus = calculateStatus(session);
     if (session.status !== newStatus) {
@@ -66,49 +89,36 @@ router.get("/:sessionId", async (req, res) => {
 router.post("/:sessionId/join", async (req, res) => {
   try {
     const { name } = req.body;
-    if (!name) return res.status(400).json({ message: "Name is required" });
+    if (!name) {
+      return res.status(400).json({ message: "Name is required" });
+    }
 
     const session = await RunSession.findOne({
       sessionId: req.params.sessionId,
     });
-    if (!session) return res.status(404).json({ message: "Session not found" });
+
+    if (!session) {
+      return res.status(404).json({ message: "Session not found" });
+    }
 
     const status = calculateStatus(session);
-    if (status !== "scheduled")
+    if (status !== "scheduled") {
       return res.status(403).json({ message: "Run already started" });
+    }
 
     if (session.participants.length >= session.maxParticipants) {
       return res.status(403).json({ message: "Participant limit reached" });
     }
 
     const alreadyJoined = session.participants.some((p) => p.name === name);
-    if (alreadyJoined)
+    if (alreadyJoined) {
       return res.status(400).json({ message: "Name already joined" });
+    }
 
     session.participants.push({ name });
     await session.save();
+
     res.json(session);
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: "Server error" });
-  }
-});
-
-// GET all sessions (for homepage feed)
-router.get("/", async (req, res) => {
-  try {
-    const sessions = await RunSession.find().sort({ startTime: 1 });
-
-    // Auto update status for each session
-    for (const session of sessions) {
-      const newStatus = calculateStatus(session);
-      if (session.status !== newStatus) {
-        session.status = newStatus;
-        await session.save();
-      }
-    }
-
-    res.json(sessions);
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: "Server error" });
