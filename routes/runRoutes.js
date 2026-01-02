@@ -20,11 +20,9 @@ router.post("/create", async (req, res) => {
     const { startTime, duration, maxParticipants } = req.body;
 
     if (!startTime || !duration || !maxParticipants) {
-      return res
-        .status(400)
-        .json({
-          message: "Please provide startTime, duration, and maxParticipants",
-        });
+      return res.status(400).json({
+        message: "Please provide startTime, duration, and maxParticipants",
+      });
     }
 
     const session = new RunSession({
@@ -90,6 +88,27 @@ router.post("/:sessionId/join", async (req, res) => {
     session.participants.push({ name });
     await session.save();
     res.json(session);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
+// GET all sessions (for homepage feed)
+router.get("/", async (req, res) => {
+  try {
+    const sessions = await RunSession.find().sort({ startTime: 1 });
+
+    // Auto update status for each session
+    for (const session of sessions) {
+      const newStatus = calculateStatus(session);
+      if (session.status !== newStatus) {
+        session.status = newStatus;
+        await session.save();
+      }
+    }
+
+    res.json(sessions);
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: "Server error" });
