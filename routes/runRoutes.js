@@ -14,10 +14,13 @@ const calculateStatus = (session) => {
   return "completed";
 };
 
+// Valid activity types
+const validActivities = ["run", "gym", "sport", "other"];
+
 // CREATE session
 router.post("/create", async (req, res) => {
   try {
-    const { startTime, duration, maxParticipants, activityType } = req.body;
+    let { startTime, duration, maxParticipants, activityType } = req.body;
 
     if (!startTime || !duration || !maxParticipants) {
       return res.status(400).json({
@@ -25,19 +28,23 @@ router.post("/create", async (req, res) => {
       });
     }
 
+    // Force lowercase and validate activityType
+    activityType = (activityType || "run").toLowerCase();
+    if (!validActivities.includes(activityType)) activityType = "run";
+
     const session = new RunSession({
       sessionId: Math.random().toString(36).substring(2, 10),
       startTime,
       duration: Number(duration),
       maxParticipants: Number(maxParticipants),
-      activityType: activityType || "run", // default run if not provided
+      activityType,
       participants: [],
     });
 
     await session.save();
     res.json(session);
   } catch (err) {
-    console.error(err);
+    console.error("Error creating session:", err);
     res.status(500).json({ message: "Server error" });
   }
 });
@@ -57,7 +64,7 @@ router.get("/", async (req, res) => {
 
     res.json(sessions);
   } catch (err) {
-    console.error(err);
+    console.error("Error fetching sessions:", err);
     res.status(500).json({ message: "Server error" });
   }
 });
@@ -81,7 +88,7 @@ router.get("/:sessionId", async (req, res) => {
 
     res.json(session);
   } catch (err) {
-    console.error(err);
+    console.error("Error fetching session by ID:", err);
     res.status(500).json({ message: "Server error" });
   }
 });
@@ -121,7 +128,7 @@ router.post("/:sessionId/join", async (req, res) => {
 
     res.json(session);
   } catch (err) {
-    console.error(err);
+    console.error("Error joining session:", err);
     res.status(500).json({ message: "Server error" });
   }
 });
