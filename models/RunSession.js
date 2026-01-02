@@ -7,6 +7,11 @@ const participantSchema = new mongoose.Schema({
 
 const runSessionSchema = new mongoose.Schema({
   sessionId: String,
+  activityType: {
+    type: String,
+    enum: ["run", "gym", "sport", "other"],
+    default: "run",
+  },
   startTime: Date,
   duration: Number, // in minutes
   maxParticipants: Number,

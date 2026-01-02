@@ -17,7 +17,7 @@ const calculateStatus = (session) => {
 // CREATE session
 router.post("/create", async (req, res) => {
   try {
-    const { startTime, duration, maxParticipants } = req.body;
+    const { startTime, duration, maxParticipants, activityType } = req.body;
 
     if (!startTime || !duration || !maxParticipants) {
       return res.status(400).json({
@@ -30,6 +30,7 @@ router.post("/create", async (req, res) => {
       startTime,
       duration: Number(duration),
       maxParticipants: Number(maxParticipants),
+      activityType: activityType || "run", // default run if not provided
       participants: [],
     });
 
@@ -41,7 +42,7 @@ router.post("/create", async (req, res) => {
   }
 });
 
-// GET ALL sessions (homepage feed)  ✅ MUST BE BEFORE :sessionId
+// GET all sessions (homepage feed)  ✅ MUST BE BEFORE :sessionId
 router.get("/", async (req, res) => {
   try {
     const sessions = await RunSession.find().sort({ startTime: 1 });
@@ -103,7 +104,7 @@ router.post("/:sessionId/join", async (req, res) => {
 
     const status = calculateStatus(session);
     if (status !== "scheduled") {
-      return res.status(403).json({ message: "Run already started" });
+      return res.status(403).json({ message: "Session already started" });
     }
 
     if (session.participants.length >= session.maxParticipants) {
